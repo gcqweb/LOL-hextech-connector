@@ -4,6 +4,7 @@
 /data
 "ban and pick.py"
 "pick_or_ban.ts"
+".git-token.txt"
 **/*.log
 .DS_Store
 .vscode/
