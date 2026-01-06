@@ -1,0 +1,29 @@
+[package]
+name = "lol-hextech-connector" # 海克斯连接器
+version = "0.1.0"
+edition = "2026"
+
+[dependencies]
+eframe = "0.29"
+egui = "0.29"
+reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sysinfo = "0.32"
+base64 = "0.22"
+anyhow = "1.0"
+crossbeam-channel = "0.5"
+chrono = "0.4"
+image = { version = "0.25", features = ["jpeg", "png"] }
+
+[build-dependencies]
+winres = "0.1" # 用于生成管理员权限清单
+
+# --- 极致压缩配置 ---
+[profile.release]
+opt-level = "z"     # 优化代码体积
+lto = true          # 启用链接时优化
+codegen-units = 1   # 降低并行度以提高优化质量
+panic = "abort"     # 移除 panic 展开代码
+strip = true        # 移除符号表

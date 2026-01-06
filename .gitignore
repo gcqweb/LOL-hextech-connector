@@ -1,0 +1,10 @@
+/target
+/new
+/old
+/data
+"ban and pick.py"
+"pick_or_ban.ts"
+**/*.log
+.DS_Store
+.vscode/
+.idea/
