@@ -5,7 +5,6 @@ A high-performance League of Legends helper built with **Rust** and **egui**. De
 一款基于 **Rust** 和 **egui** 开发的高性能英雄联盟助手。旨在提供极致轻量、飞速响应且低内存占用的使用体验。
 
 ---
-
 ### ✨ Features | 功能特性
 
 * **🎮 ARAM Bench (大乱斗板无CD换英雄):** Real-time monitoring and one-click selection of champions from the ARAM bench. 实时监控大乱斗板凳席，快速抢夺心仪英雄。
@@ -13,7 +12,6 @@ A high-performance League of Legends helper built with **Rust** and **egui**. De
 * Auto-accept matches (自动接受对局)
 * Auto-honor teammates (自动点赞)
 * Auto-rejoin lobby (自动回房间)
-
 
 * **🎭 Rank Camouflage (伪装段位):** Customize your displayed rank in the client (Visual only). 客户端段位伪装（仅本地视觉效果）。
 * **⚡ Insta-Lock (大乱斗抢人):** Lightning-fast champion locking for ARAM modes. 极速秒选特定英雄。
@@ -24,6 +22,13 @@ A high-performance League of Legends helper built with **Rust** and **egui**. De
 * **🦀 Rust Powered:** Safe, fast, and extremely low CPU/RAM usage. 安全、快速，极低的 CPU 和内存占用。
 
 ---
+## 📸 Preview | 应用截图
+
+<p align="center">
+  <img width="240" height="510" alt="64023703-067e-47ae-ad21-8d340f8dd4ba" src="https://github.com/user-attachments/assets/291fae9e-4758-4d39-af91-f5d7df139685" />
+  <br>
+  <em> Hex Connector (Rust + egui)</em>
+</p>
 
 ### 🚀 Getting Started | 快速开始
 
