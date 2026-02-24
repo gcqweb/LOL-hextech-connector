@@ -2249,6 +2249,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
 
 [[package]]
+name = "lol-hextech-connector"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64",
+ "chrono",
+ "crossbeam-channel",
+ "eframe",
+ "egui",
+ "image",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sysinfo",
+ "tokio",
+ "winres",
+]
+
+[[package]]
 name = "loop9"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5618,23 +5637,4 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.111",
-]
-
-[[package]]
-name = "海克斯连接器"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "base64",
- "chrono",
- "crossbeam-channel",
- "eframe",
- "egui",
- "image",
- "reqwest",
- "serde",
- "serde_json",
- "sysinfo",
- "tokio",
- "winres",
 ]

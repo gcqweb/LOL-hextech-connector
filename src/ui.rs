@@ -70,6 +70,10 @@ pub struct HexApp {
     sr_pick_text: HashMap<String, String>,
     sr_ban_text: HashMap<String, String>,
     image_cache: HashMap<String, egui::TextureHandle>,
+    /// 是否在准备检查中
+    in_ready_check: bool,
+    /// 当前游戏阶段
+    current_phase: String,
 }
 
 impl HexApp {
@@ -122,6 +126,8 @@ impl HexApp {
             sr_pick_text: HashMap::new(),
             sr_ban_text: HashMap::new(),
             image_cache: HashMap::new(),
+            in_ready_check: false,
+            current_phase: String::new(),
         }
     }
 
@@ -157,6 +163,19 @@ impl HexApp {
         let _ = self
             .tx_to_backend
             .send(BackendMsg::SaveSettings(self.settings.clone()));
+    }
+
+    /// 根据当前阶段更新状态文本
+    fn update_status_from_phase(&mut self) {
+        self.status_text = match self.current_phase.as_str() {
+            "Lobby" => "● 房间中".into(),
+            "Matchmaking" => "● 匹配中".into(),
+            "ReadyCheck" => "准备检查中".into(),
+            "ChampSelect" => "● 选人中".into(),
+            "InProgress" | "GameStart" => "● 游戏中".into(),
+            "WaitingForStats" | "PreEndOfGame" | "EndOfGame" => "● 结算中".into(),
+            _ => "● 已连接".into(),
+        };
     }
 
     fn get_image(&mut self, ctx: &egui::Context, image_name: &str) -> Option<egui::TextureHandle> {
@@ -218,16 +237,30 @@ impl App for HexApp {
                 }
                 GuiMsg::Status(c) => {
                     self.connected = c;
-                    self.status_text = if c {
-                        "● 已连接".into()
-                    } else {
-                        "○ 未连接".into()
-                    };
+                    if !c {
+                        self.status_text = "未连接".into();
+                        self.current_phase = String::new();
+                        self.in_ready_check = false;
+                    }
                 }
                 GuiMsg::BenchUpdate(ids) => self.bench_ids = ids,
                 GuiMsg::LoadedData(s) => {
                     self.status_text = s;
                     self.sync_ui_names();
+                }
+                GuiMsg::ReadyCheckState(in_check) => {
+                    self.in_ready_check = in_check;
+                    if in_check {
+                        self.status_text = "准备检查中".into();
+                    } else if self.connected {
+                        self.update_status_from_phase();
+                    }
+                }
+                GuiMsg::PhaseUpdate(phase) => {
+                    self.current_phase = phase;
+                    if self.connected && !self.in_ready_check {
+                        self.update_status_from_phase();
+                    }
                 }
             }
         }
@@ -311,13 +344,48 @@ impl App for HexApp {
                                 let _ = self.tx_to_backend.send(BackendMsg::ForceReconnect);
                             }
                             
-                            let status_color = if self.connected {
-                                Color32::from_rgb(10, 203, 230) // Hextech Blue
+                            // 统一状态按钮 - 根据状态显示不同文字和颜色
+                            let (btn_text, btn_color, text_color) = if !self.connected {
+                                // 未连接 - 红色，点击启动客户端
+                                ("未连接", Color32::from_rgb(80, 30, 30), Color32::from_rgb(255, 100, 100))
+                            } else if self.in_ready_check {
+                                // 准备检查中 - 红色警告，点击取消
+                                ("取消接受", Color32::from_rgb(200, 50, 50), Color32::WHITE)
                             } else {
-                                Color32::RED
+                                // 根据阶段显示不同状态
+                                match self.current_phase.as_str() {
+                                    "InProgress" | "GameStart" => {
+                                        ("游戏中", Color32::from_rgb(20, 80, 60), Color32::from_rgb(100, 230, 180))
+                                    }
+                                    "ChampSelect" => {
+                                        ("选人中", Color32::from_rgb(20, 60, 80), Color32::from_rgb(100, 200, 230))
+                                    }
+                                    "Matchmaking" => {
+                                        ("匹配中", Color32::from_rgb(50, 50, 80), Color32::from_rgb(180, 180, 230))
+                                    }
+                                    "Lobby" => {
+                                        ("房间中", Color32::from_rgb(20, 50, 60), Color32::from_rgb(10, 203, 230))
+                                    }
+                                    _ => {
+                                        ("已连接", Color32::from_rgb(20, 40, 50), Color32::from_rgb(10, 203, 230))
+                                    }
+                                }
                             };
-                        
-                            ui.label(egui::RichText::new(&self.status_text).color(status_color));
+                            
+                            let status_btn = egui::Button::new(
+                                egui::RichText::new(btn_text).color(text_color)
+                            ).fill(btn_color).rounding(4.0);
+                            
+                            if ui.add(status_btn).clicked() {
+                                if !self.connected {
+                                    // 未连接时启动客户端
+                                    // let _ = self.tx_to_backend.send(BackendMsg::LaunchClient);
+                                    let _ = self.tx_to_backend.send(BackendMsg::ForceReconnect);
+                                } else if self.in_ready_check {
+                                    // 准备检查中取消接受
+                                    let _ = self.tx_to_backend.send(BackendMsg::DeclineReadyCheck);
+                                }
+                            }
                         });
                     });
                 });
@@ -345,22 +413,28 @@ impl App for HexApp {
                                 if self.bench_ids.is_empty() {
                                     ui.colored_label(Color32::GRAY, "等待队列中...");
                                 } else {
+                                    // 先收集英雄数据，然后释放锁
                                     let bench_data: Vec<Hero> = {
-                                        let map = self.heroes.lock().unwrap();
-                                        self.bench_ids
-                                            .iter()
-                                            .filter_map(|id| map.get(id).cloned())
-                                            .collect()
-                                    };
+                                        if let Ok(map) = self.heroes.lock() {
+                                            self.bench_ids
+                                                .iter()
+                                                .filter_map(|id| map.get(id).cloned())
+                                                .collect()
+                                        } else {
+                                            Vec::new()
+                                        }
+                                    }; // map 在这里被释放
+                                    
+                                    // 现在可以安全地调用 get_image (需要 &mut self)
                                     for h in bench_data {
-                                        let img = egui::Image::new(
-                                            &self.get_image(ctx, &h.image_name).unwrap(),
-                                        )
-                                        .fit_to_exact_size(Vec2::splat(32.0));
-                                        if ui.add(egui::Button::image(img)).clicked() {
-                                            let _ = self
-                                                .tx_to_backend
-                                                .send(BackendMsg::SwapChamp(h.id));
+                                        if let Some(texture) = self.get_image(ctx, &h.image_name) {
+                                            let img = egui::Image::new(&texture)
+                                                .fit_to_exact_size(Vec2::splat(32.0));
+                                            if ui.add(egui::Button::image(img)).clicked() {
+                                                let _ = self
+                                                    .tx_to_backend
+                                                    .send(BackendMsg::SwapChamp(h.id));
+                                            }
                                         }
                                     }
                                 }
@@ -473,14 +547,15 @@ impl App for HexApp {
                             );
                             ui.horizontal(|ui| {
                                 if ui.text_edit_singleline(&mut self.search_input).changed() {
-                                    let map = self.heroes.lock().unwrap();
                                     let term = self.search_input.to_lowercase();
-                                    self.search_result = map
-                                        .values()
-                                        .filter(|h| h.alias.contains(&term))
-                                        .take(8)
-                                        .cloned()
-                                        .collect();
+                                    self.search_result = {
+                                        let map = self.heroes.lock().unwrap();
+                                        map.values()
+                                            .filter(|h| h.alias.contains(&term))
+                                            .take(8)
+                                            .cloned()
+                                            .collect()
+                                    };
                                 }
                             });
                             if !self.search_result.is_empty() && !self.search_input.is_empty() {
@@ -508,10 +583,21 @@ impl App for HexApp {
                                 self.trigger_save();
                             }
                             let map = self.heroes.lock().unwrap();
+                            // 提前收集英雄名称，避免借用冲突
+                            let snipe_names: Vec<(usize, i32, String)> = self.settings.snipe_list
+                                .iter()
+                                .enumerate()
+                                .map(|(i, &id)| {
+                                    let name = map.get(&id).map(|h| h.name.clone()).unwrap_or_else(|| "?".to_string());
+                                    (i, id, name)
+                                })
+                                .collect();
+                            drop(map); // 显式释放锁
+                            
                             let mut rm = None;
-                            for (i, &id) in self.settings.snipe_list.iter().enumerate() {
+                            for (i, _id, name) in snipe_names {
                                 ui.horizontal(|ui| {
-                                    ui.label(map.get(&id).map(|h| h.name.as_str()).unwrap_or("?"));
+                                    ui.label(&name);
                                     if ui.button("x").clicked() {
                                         rm = Some(i);
                                     }

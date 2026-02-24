@@ -13,7 +13,7 @@ use crate::models::{ActionState, BackendMsg, GuiMsg, Hero, LcuConnection};
 use crate::utils::{load_settings, save_settings_to_disk};
 
 use champ_select::handle_champ_select;
-use flow::{handle_end_of_game, handle_lobby, handle_ready_check};
+use flow::{decline_ready_check, handle_end_of_game, handle_lobby, handle_ready_check};
 
 pub async fn run_backend(
     tx: crossbeam_channel::Sender<GuiMsg>,
@@ -73,6 +73,20 @@ pub async fn run_backend(
                     tx.send(GuiMsg::Log("正在重连...".into())).unwrap();
                     tokio::time::sleep(Duration::from_millis(500)).await;
                 }
+                BackendMsg::DeclineReadyCheck => {
+                    if let Some(conn) = &connection {
+                        decline_ready_check(&client, conn).await;
+                        tx.send(GuiMsg::Log("已拒绝准备检查".into())).unwrap();
+                        tx.send(GuiMsg::ReadyCheckState(false)).unwrap();
+                    }
+                }
+                // BackendMsg::LaunchClient => {
+                //     tx.send(GuiMsg::Log("正在启动客户端...".into())).unwrap();
+                //     // 启动英雄联盟客户端
+                //     let _ = std::process::Command::new("cmd")
+                //         .args(&["/C", "start", "league://"])
+                //         .spawn();
+                // }
             }
         }
 
@@ -136,6 +150,14 @@ pub async fn run_backend(
         if phase != last_phase {
             last_phase = phase.clone();
             tx.send(GuiMsg::Log(format!("状态: {}", phase))).unwrap();
+            
+            // 发送阶段更新到 GUI
+            tx.send(GuiMsg::PhaseUpdate(phase.clone())).unwrap();
+            
+            // 如果离开 ReadyCheck 阶段，确保重置准备检查状态
+            if phase != "ReadyCheck" {
+                let _ = tx.send(GuiMsg::ReadyCheckState(false));
+            }
 
             // Phase Change Reset - 进入新的 ChampSelect 时清除旧状态
             if phase == "ChampSelect" {
@@ -157,7 +179,7 @@ pub async fn run_backend(
         match phase.as_str() {
             "ReadyCheck" => {
                 loop_delay = Duration::from_millis(500);
-                handle_ready_check(&client, &conn, &settings).await;
+                handle_ready_check(&client, &conn, &settings, &tx).await;
             }
             "ChampSelect" => {
                 loop_delay = Duration::from_millis(200); // Fast tick for locking

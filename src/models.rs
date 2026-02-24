@@ -73,6 +73,10 @@ pub enum GuiMsg {
     Status(bool),
     BenchUpdate(Vec<i32>),
     LoadedData(String),
+    /// 准备检查状态 (是否在准备检查中)
+    ReadyCheckState(bool),
+    /// 游戏阶段更新
+    PhaseUpdate(String),
 }
 
 pub enum BackendMsg {
@@ -80,6 +84,8 @@ pub enum BackendMsg {
     SaveSettings(Settings),
     UpdateRank,
     ForceReconnect,
+    /// 拒绝准备检查
+    DeclineReadyCheck
 }
 
 #[derive(Clone, Debug)]

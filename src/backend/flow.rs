@@ -8,17 +8,59 @@ pub async fn handle_ready_check(
     client: &Client,
     conn: &LcuConnection,
     settings: &Settings,
+    tx: &crossbeam_channel::Sender<GuiMsg>,
 ) {
-    if settings.auto_accept {
-        let _ = lcu_request(
-            client,
-            conn,
-            "POST",
-            "/lol-matchmaking/v1/ready-check/accept",
-            None,
-        )
-        .await;
+    // 检查准备检查状态
+    if let Ok(ready_check) = lcu_request(
+        client,
+        conn,
+        "GET",
+        "/lol-matchmaking/v1/ready-check",
+        None,
+    )
+    .await
+    {
+        // 获取状态字段
+        let state = ready_check.get("state").and_then(|s| s.as_str()).unwrap_or("");
+        
+        // 如果状态是 InProgress，通知 GUI 显示准备检查状态
+        if state == "InProgress" {
+            tx.send(GuiMsg::ReadyCheckState(true)).unwrap();
+            
+            // 如果启用自动接受
+            if settings.auto_accept {
+                let _ = lcu_request(
+                    client,
+                    conn,
+                    "POST",
+                    "/lol-matchmaking/v1/ready-check/accept",
+                    None,
+                )
+                .await;
+            }
+        } else {
+            // 准备检查结束，通知 GUI
+            tx.send(GuiMsg::ReadyCheckState(false)).unwrap();
+        }
+    } else {
+        // 请求失败，通知 GUI 准备检查已结束
+        tx.send(GuiMsg::ReadyCheckState(false)).unwrap();
     }
+}
+
+/// 拒绝准备检查
+pub async fn decline_ready_check(
+    client: &Client,
+    conn: &LcuConnection,
+) {
+    let _ = lcu_request(
+        client,
+        conn,
+        "POST",
+        "/lol-matchmaking/v1/ready-check/decline",
+        None,
+    )
+    .await;
 }
 
 pub async fn handle_end_of_game(
