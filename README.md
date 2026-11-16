@@ -1,80 +1,137 @@
-## 🦀 Hex Connector | 海克斯 · 连接器 |英雄联盟助手
+# 海克斯 • 连接器
 
-A high-performance League of Legends helper built with **Rust** and **egui**. Designed to be lightweight, lightning-fast, and memory-efficient.
-
-一款基于 **Rust** 和 **egui** 开发的高性能英雄联盟助手。旨在提供极致轻量、飞速响应且低内存占用的使用体验。
-
----
-### ✨ Features | 功能特性
-
-* **🎮 ARAM Bench (大乱斗板无CD换英雄):** Real-time monitoring and one-click selection of champions from the ARAM bench. 实时监控大乱斗板凳席，快速抢夺心仪英雄。
-* **⚙️ Global Automation (全局功能):** 
-* Auto-accept matches (自动接受对局)
-* Auto-honor teammates (自动点赞)
-* Auto-rejoin lobby (自动回房间)
-
-* **🎭 Rank Camouflage (伪装段位):** Customize your displayed rank in the client (Visual only). 客户端段位伪装（仅本地视觉效果）。
-* **⚡ Insta-Lock (大乱斗抢人):** Lightning-fast champion locking for ARAM modes. 极速秒选特定英雄。
-* **🗺️ Summoner's Rift Automation (峡谷/排位助手):** * Pre-selection & Auto-lock (自动预选及锁定)
-* Auto-ban specific champions per role (按位置自动禁用英雄)
-
-
-* **🦀 Rust Powered:** Safe, fast, and extremely low CPU/RAM usage. 安全、快速，极低的 CPU 和内存占用。
-
----
-## 📸 Preview | 应用截图
+一款基于 **Rust + egui** 的英雄联盟（LCU）桌面助手。无边框半透明海克斯风格界面，通过客户端本地 LCU API 实现选人与对局流程自动化，常驻内存低、响应快，纯中文界面。
 
 <p align="center">
-  <img width="240" height="510" alt="64023703-067e-47ae-ad21-8d340f8dd4ba" src="https://github.com/user-attachments/assets/291fae9e-4758-4d39-af91-f5d7df139685" />
+  <img width="240" height="510" alt="应用截图" src="https://github.com/user-attachments/assets/291fae9e-4758-4d39-af91-f5d7df139685" />
   <br>
-  <em> Hex Connector (Rust + egui)</em>
+  <em>完整模式界面</em>
 </p>
 
-### 🚀 Getting Started | 快速开始
+---
 
-#### Prerequisites | 前置条件
+## 功能特性
 
-* Windows 10/11
-* League of Legends Client (LCU) running.
+### 全局自动化
+| 功能 | 说明 |
+| --- | --- |
+| 自动接受 | 准备检查弹出时立即接受，无需手动点击 |
+| 自动点赞 | 结算阶段自动跳过点赞环节（`OPT_OUT`），加快返回速度 |
+| 自动回房间 | 对局结束后自动点击「再来一局」返回房间 |
+| 自动匹配 | 回到房间后延迟指定秒数（1–60s）自动开始匹配，已在匹配中则不重复触发 |
+| 暂停接管 | 一键暂停全部自动化（各开关配置保留，再点即恢复）；隐身功能不受暂停影响 |
+| 隐身挂机 | 好友列表显示为离线，可安心挂机；关闭后恢复在线 |
 
-#### Installation | 安装
+### 伪装段位
+自定义客户端内显示的段位与小段（黑铁–王者共 9 个大段、IV–I 共 4 个小段）。**仅本地视觉效果**，不影响真实段位与匹配。连接成功、回到房间时自动重新应用。
 
-1. Download the latest release from the [Releases](https://www.google.com/search?q=https://github.com/your-repo/releases) page.
-2. Run `hex_connector.exe` as Administrator.
-3. The tool will automatically connect to your LCU client.
-4. 从 [Releases](https://www.google.com/search?q=https://github.com/your-repo/releases) 页面下载最新版本。
-5. 以管理员权限运行 `hex_connector.exe`。
-6. 助手将自动连接至您的英雄联盟客户端。
+### 大乱斗（极地大乱斗）
+- **板凳席实时同步**：以英雄头像按钮展示当前板凳席，点击即与手中英雄交换，随时换人。
+- **秒抢列表**：按优先级排序的目标英雄列表，支持中文名 / 称号 / 英文标识搜索添加、拖拽排序、键盘上下键与回车操作。板凳席出现目标英雄时按优先级自动交换；已是目标英雄时停止。
+
+### 峡谷 / 排位（征召模式）
+- **按位置预设**：上 / 野 / 中 / 下 / 辅五个位置分别设置「预选」与「禁用」英雄，头像胶囊直观展示，点击弹出搜索浮窗选择。
+- **预选与意向展示**：轮到之前提前展示意向，轮到自己时自动高亮预设英雄。
+- **定时锁定**：可设置「剩余 N 秒时锁定」，在倒计时到达设定值时自动锁定当前高亮英雄，避免过早锁定暴露意图或过晚锁定被抢。预选与禁用各自独立开关与秒数。
+- **队友意向保护**：预设禁用目标若与队友意向英雄冲突，自动从其他位置的禁用备选池中改选，避免误禁队友想玩的英雄。
+
+### 界面与窗口
+- **海克斯风格**：深蓝底 + 金色描边卡片，无边框、背景透明，强制 Glow（OpenGL）渲染以降低内存占用。
+- **尺寸自适应**：窗口宽高随内容自动收敛，无滚动条；卡片宽度向最宽卡片对齐。
+- **微缩模式**：双击标题栏切换。仅保留 2×2 对齐居中的四个高频开关（暂停接管 / 自动接受 / 自动抢人 / 自动匹配），大乱斗时附加板凳席头像行（一行 5 个），其余情况隐藏，窗口极小化常驻屏幕角落。
+- **窗口位置持久化**：全局坐标落盘，启动时恢复；越界自动夹回最近边缘并保留边距；微缩↔完整切换导致尺寸变化时按新尺寸重新夹回，防止贴边恢复大窗后超出屏幕。
+- **平滑拖拽**：标题栏手动拖拽（屏幕坐标换算），不进入系统原生拖拽模态循环，因此**不会触发 Windows 边缘分屏贴靠**；松手即停止跟随，拖拽中断不会残留「粘鼠标」。
+- **状态按钮**：标题栏实时显示 未连接 / 已连接 / 房间中 / 匹配中 / 选人中 / 游戏中 / 结算中；准备检查时变为红色「取消接受」，点击即拒绝；未连接时点击触发重连。另有独立重连按钮。
+- **单实例**：重复启动时激活已有窗口并退出新进程。
+- **日志门禁**：日志面板默认隐藏，仅当配置文件 `show_log=true` 时解锁显示（滚动、自动贴底、保留最近 50 条）。
+
+### 数据与资源
+- 启动时自动从 Data Dragon 获取最新版本号，下载简体中文英雄数据（`data/champion.json`），版本变化时自动更新。
+- 英雄头像按需下载并缓存到 `data/img/`，界面内纹理缓存复用，避免重复解码。
+- 中文字体优先加载系统微软雅黑 / 黑体，保证中文渲染清晰。
 
 ---
 
-### 🛠️ Development | 开发相关
+## 运行环境
 
-This project is built using the **egui** framework for the GUI and interacts with the League of Legends Client via the **LCU API**.
+- Windows 10 / 11（x64）
+- 英雄联盟客户端已启动（助手通过进程命令行自动发现 LCU 端口与令牌，无需手动配置）
+- **需要管理员权限**：读取客户端进程信息所用；可执行文件已内嵌管理员清单，双击即提权运行
 
-本项目使用 **egui** 框架构建界面，通过 **LCU API** 与游戏客户端进行通信。
+## 安装与使用
 
-```bash
-# Clone the repository | 克隆仓库
-git clone https://github.com/your-username/hex-connector.git
+1. 从 Releases 下载最新压缩包并解压（或直接使用编译产物 `lol-hextech-connector.exe`）。
+2. 双击运行（自动请求管理员权限）。
+3. 启动英雄联盟客户端，助手会在 1 秒内自动连接并显示「已连接」。
+4. 按需勾选各功能开关，所有配置即时保存到 `settings.json`，下次启动自动恢复。
+5. 双击标题栏可在完整模式与微缩模式间切换。
 
-# Build the project | 编译项目
-cargo build --release
+> 若客户端重启或连接断开，点击标题栏「↻」或状态按钮即可重连。
+
+## 配置说明
+
+配置保存于程序目录 `settings.json`，主要字段：
+
+| 字段 | 含义 |
+| --- | --- |
+| `auto_accept` / `auto_honor` / `play_again` / `auto_queue` | 全局自动化开关 |
+| `queue_delay` | 自动匹配延迟秒数（1–60） |
+| `pause_all` | 暂停接管总开关 |
+| `invisible` | 隐身挂机 |
+| `spoof_rank` / `spoof_tier` / `spoof_div` | 伪装段位开关与目标段位、小段 |
+| `aram_snipe` / `snipe_list` | 秒抢开关与优先级英雄 ID 列表 |
+| `sr_enable` / `auto_lock` / `lock_time` | 预选开关、自动锁定开关、锁定剩余秒数 |
+| `sr_ban_enable` / `auto_ban_lock` / `ban_time` | 禁用开关、自动锁定开关、锁定剩余秒数 |
+| `sr_picks` / `sr_bans` | 各位置预选 / 禁用英雄映射 |
+| `micro_mode` | 微缩模式 |
+| `show_log` | 日志面板门禁（默认 false） |
+| `window_pos` | 窗口位置持久化坐标 |
+
+---
+
+## 项目结构
 
 ```
+src/
+├── main.rs              # 入口：单实例、通道、eframe 启动、内嵌图标
+├── models.rs            # 配置 / 消息 / 英雄等数据模型与段位映射
+├── utils.rs             # 常量、配置读写、英雄名查询
+├── lcu.rs               # LCU 进程发现、请求封装、数据更新、段位伪装、隐身
+├── single_instance.rs   # 单实例互斥与已有窗口激活
+├── backend/
+│   ├── mod.rs           # 后端主循环：连接管理、阶段调度、消息处理
+│   ├── flow.rs          # 准备检查 / 结算 / 房间阶段自动化
+│   └── champ_select.rs  # 选人阶段：大乱斗板凳席与秒抢、峡谷 Ban/Pick 定时锁定
+└── ui/
+    ├── mod.rs           # HexApp 状态、消息消费、窗口自适应与拖拽、模式分发
+    ├── widgets.rs       # 通用控件：视觉配置、复选框、状态胶囊、分隔线、标题按钮、倒计时
+    ├── window.rs        # 屏幕夹回与窗口位置同步 / 持久化
+    ├── normal.rs        # 完整模式标题栏与内容卡片
+    ├── micro.rs         # 微缩模式标题栏与 2×2 开关网格、条件板凳席
+    ├── aram.rs          # 秒抢列表搜索 / 排序 / 键盘交互
+    ├── sr.rs            # 位置英雄胶囊与搜索选择浮窗
+    └── tests.rs         # 界面与交互回归测试
+```
+
+## 开发与构建
+
+```bash
+# 调试构建
+cargo build
+
+# 发布构建（体积优化：opt-level=z + LTO + strip）
+cargo build --release
+
+# 运行测试
+cargo test
+```
+
+> **测试注意**：`build.rs` 默认嵌入 `requireAdministrator` 清单，Windows 下会导致 `cargo test` 的测试进程因提权弹窗失败（错误 740）。运行测试前请将清单临时改为 `asInvoker`，测试完成后恢复。
+
+技术栈：`eframe/egui 0.29`（Glow 渲染）、`tokio` + `reqwest`（rustls）、`crossbeam-channel`（前后端消息）、`sysinfo`（LCU 进程发现）、`serde`（配置持久化）、`image`（头像解码）、`winres`（管理员清单与图标）。
 
 ---
 
-### ⚠️ Disclaimer | 免责声明
+## 免责声明
 
-This tool is intended for educational purposes and enhancing user convenience. Use at your own risk. The developers are not responsible for any account bans or penalties.
-
-本工具仅用于学习交流及提升用户便捷体验。请自行承担使用风险，开发者对任何账号封禁或处罚不承担责任。
-
----
-
-### 🤝 Contributing | 贡献
-
-Feel free to open issues or submit pull requests to help improve Hex Connector!
-欢迎提交 Issue 或 Pull Request 来帮助改进海克斯 · 连接器！
-
+本工具仅用于学习交流与提升个人使用便捷性，通过客户端公开本地接口实现自动化，不修改游戏内存、不注入游戏进程。请自行承担使用风险，开发者对任何账号处罚不承担责任。

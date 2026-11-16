@@ -24,6 +24,13 @@ pub async fn handle_champ_select(
             Err(_) => return,
         };
 
+    // 大乱斗判定（benchEnabled）上报 UI，供微缩模式决定板凳席显隐
+    let bench_enabled = session_json
+        .get("benchEnabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+    tx.send(GuiMsg::AramMode(bench_enabled)).ok();
+
     let local_cell_id = session_json
         .get("localPlayerCellId")
         .and_then(|v| v.as_i64())
@@ -33,7 +40,7 @@ pub async fn handle_champ_select(
     }
 
     // --- 大乱斗板凳席模式 ---
-    if session_json.get("benchEnabled").and_then(|v| v.as_bool()).unwrap_or(false) {
+    if bench_enabled {
         handle_aram_bench(client, conn, settings, tx, session_json, last_bench_ids, local_cell_id, shared_heroes).await;
         return;
     }
@@ -57,6 +64,10 @@ async fn handle_sr_pick_ban(
     shared_heroes: &Arc<Mutex<HashMap<i32, Hero>>>,
     local_cell_id: i64,
 ) {
+    // 暂停接管：不执行任何 Ban / Pick 自动化
+    if settings.pause_all {
+        return;
+    }
     // 获取计时器信息
     let timer_obj = session_json.get("timer");
     let time_left_ms = timer_obj
@@ -422,8 +433,8 @@ async fn handle_aram_bench(
             tx.send(GuiMsg::BenchUpdate(current_bench.clone())).ok();
         }
 
-        // 秒抢逻辑
-        if settings.aram_snipe {
+        // 秒抢逻辑（暂停接管时不自动抢人，但板凳席仍上报供手动交换）
+        if settings.aram_snipe && !settings.pause_all {
             let mut my_hero = 0;
             if let Some(tm) = session.get("myTeam").and_then(|x| x.as_array()) {
                 for m in tm {

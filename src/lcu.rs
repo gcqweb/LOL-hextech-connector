@@ -124,6 +124,7 @@ pub async fn update_data(client: &Client, shared_heroes: &Arc<Mutex<HashMap<i32,
                         Hero {
                             id: key,
                             name,
+                            title,
                             alias,
                             image_name: img,
                         },
@@ -137,4 +138,16 @@ pub async fn update_data(client: &Client, shared_heroes: &Arc<Mutex<HashMap<i32,
 pub async fn spoof_rank(client: &Client, conn: &LcuConnection, s: &Settings) {
     let payload = serde_json::json!({ "lol": { "rankedLeagueTier": s.spoof_tier, "rankedLeagueDivision": s.spoof_div, "rankedLeagueQueue": "RANKED_SOLO_5x5", "rankedLeagueJo": "RUBY" } });
     let _ = lcu_request(client, conn, "PUT", "/lol-chat/v1/me", Some(payload)).await;
+}
+
+/// 设置在线状态（availability）。`offline` 即对好友隐身，`chat` 恢复在线。
+pub async fn set_availability(client: &Client, conn: &LcuConnection, avail: &str) -> Result<()> {
+    let payload = serde_json::json!({ "availability": avail });
+    lcu_request(client, conn, "PUT", "/lol-chat/v1/me", Some(payload)).await?;
+    Ok(())
+}
+
+/// 一键隐身 / 恢复在线。
+pub async fn set_invisible(client: &Client, conn: &LcuConnection, invisible: bool) -> Result<()> {
+    set_availability(client, conn, if invisible { "offline" } else { "chat" }).await
 }

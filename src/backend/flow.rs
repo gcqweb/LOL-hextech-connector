@@ -27,8 +27,8 @@ pub async fn handle_ready_check(
         if state == "InProgress" {
             tx.send(GuiMsg::ReadyCheckState(true)).unwrap();
             
-            // 如果启用自动接受
-            if settings.auto_accept {
+            // 如果启用自动接受（暂停接管时不自动接受，但仍上报状态供手动取消）
+            if settings.auto_accept && !settings.pause_all {
                 let _ = lcu_request(
                     client,
                     conn,
@@ -71,6 +71,9 @@ pub async fn handle_end_of_game(
     honored: &mut bool,
     played_again: &mut bool,
 ) {
+    if settings.pause_all {
+        return;
+    }
     if settings.auto_honor && !*honored {
         if let Ok(ballot) =
             lcu_request(client, conn, "GET", "/lol-honor-v2/v1/ballot", None).await
@@ -103,6 +106,9 @@ pub async fn handle_lobby(
     tx: &crossbeam_channel::Sender<GuiMsg>,
     queue_timer: &mut Option<Instant>,
 ) {
+    if settings.pause_all {
+        return;
+    }
     if settings.auto_queue {
         if queue_timer.is_none() {
             *queue_timer = Some(Instant::now());
@@ -135,5 +141,37 @@ pub async fn handle_lobby(
                 *queue_timer = Some(Instant::now() + Duration::from_secs(9999));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 暂停接管时 lobby / end_of_game 自动化应早退：不产生消息、不触发网络、不改动状态。
+    #[test]
+    fn pause_all_skips_lobby_and_end_of_game() {
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let client = Client::new();
+        let conn = LcuConnection {
+            url: "https://127.0.0.1:1".into(),
+            auth_header: "Basic eA==".into(),
+        };
+        let (tx, rx) = crossbeam_channel::unbounded();
+        let mut s = Settings::default();
+        s.pause_all = true;
+        s.auto_queue = true;
+        s.auto_honor = true;
+        s.play_again = true;
+        let mut queue_timer = None;
+        let mut honored = false;
+        let mut played_again = false;
+        rt.block_on(async {
+            handle_lobby(&client, &conn, &s, &tx, &mut queue_timer).await;
+            handle_end_of_game(&client, &conn, &s, &tx, &mut honored, &mut played_again).await;
+        });
+        assert!(rx.try_recv().is_err(), "暂停时不应产生任何自动化消息");
+        assert!(queue_timer.is_none(), "暂停时不应启动匹配计时");
+        assert!(!honored && !played_again, "暂停时不应执行点赞 / 回房间");
     }
 }

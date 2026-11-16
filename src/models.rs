@@ -35,6 +35,21 @@ pub struct Settings {
     pub ban_time: u64,
     pub sr_picks: HashMap<String, i32>,
     pub sr_bans: HashMap<String, i32>,
+    /// 隐身挂机：启用后好友列表显示你离线（availability=offline），关闭恢复在线
+    #[serde(default)]
+    pub invisible: bool,
+    /// 暂停接管：启用后所有自动化失效（各开关的已保存值保留，关闭即恢复）
+    #[serde(default)]
+    pub pause_all: bool,
+    /// 显示日志面板（默认关闭，作为用户工具日志非必需）
+    #[serde(default)]
+    pub show_log: bool,
+    /// 窗口位置持久化（全局坐标）；启动时恢复，越界则夹回最近边缘并留边距
+    #[serde(default)]
+    pub window_pos: Option<[f32; 2]>,
+    /// 极简微缩模式：双击顶部标题栏切换，仅保留 4 个高频硬开关与条件板凳席
+    #[serde(default)]
+    pub micro_mode: bool,
 }
 
 impl Default for Settings {
@@ -58,6 +73,11 @@ impl Default for Settings {
             ban_time: 2,
             sr_picks: HashMap::new(),
             sr_bans: HashMap::new(),
+            invisible: false,
+            pause_all: false,
+            show_log: false,
+            window_pos: None,
+            micro_mode: false,
         }
     }
 }
@@ -77,6 +97,8 @@ pub enum GuiMsg {
     ReadyCheckState(bool),
     /// 游戏阶段更新
     PhaseUpdate(String),
+    /// 是否大乱斗（benchEnabled）；微缩模式据此决定板凳席显隐
+    AramMode(bool),
 }
 
 pub enum BackendMsg {
@@ -85,13 +107,16 @@ pub enum BackendMsg {
     UpdateRank,
     ForceReconnect,
     /// 拒绝准备检查
-    DeclineReadyCheck
+    DeclineReadyCheck,
+    /// 隐身切换（true=offline，false=恢复在线）
+    SetInvisible(bool),
 }
 
 #[derive(Clone, Debug)]
 pub struct Hero {
     pub id: i32,
     pub name: String,
+    pub title: String,
     pub alias: String,
     pub image_name: String,
 }

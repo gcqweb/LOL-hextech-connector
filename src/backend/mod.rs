@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use sysinfo::{ProcessesToUpdate, System};
 
-use crate::lcu::{find_lcu_process, lcu_request, spoof_rank, update_data};
+use crate::lcu::{find_lcu_process, lcu_request, set_invisible, spoof_rank, update_data};
 use crate::models::{ActionState, BackendMsg, GuiMsg, Hero, LcuConnection};
 use crate::utils::{load_settings, save_settings_to_disk};
 
@@ -80,6 +80,21 @@ pub async fn run_backend(
                         tx.send(GuiMsg::ReadyCheckState(false)).unwrap();
                     }
                 }
+                BackendMsg::SetInvisible(invisible) => {
+                    if let Some(conn) = &connection {
+                        match set_invisible(&client, conn, invisible).await {
+                            Ok(_) => {
+                                tx.send(GuiMsg::Log(
+                                    if invisible { "已隐身，好友将看到你离线" } else { "已恢复在线" }.into(),
+                                ))
+                                .unwrap();
+                            }
+                            Err(_) => tx.send(GuiMsg::Log("隐身状态切换失败".into())).unwrap(),
+                        }
+                    } else {
+                        tx.send(GuiMsg::Log("未连接客户端，无法切换隐身".into())).unwrap();
+                    }
+                }
                 // BackendMsg::LaunchClient => {
                 //     tx.send(GuiMsg::Log("正在启动客户端...".into())).unwrap();
                 //     // 启动英雄联盟客户端
@@ -115,6 +130,14 @@ pub async fn run_backend(
                     if settings.spoof_rank {
                         tokio::time::sleep(Duration::from_millis(500)).await;
                         spoof_rank(&client, connection.as_ref().unwrap(), &settings).await;
+                    }
+
+                    // 连接后按用户设置应用隐身（不受暂停接管影响）。
+                    if settings.invisible {
+                        let conn = connection.as_ref().unwrap();
+                        if set_invisible(&client, conn, true).await.is_ok() {
+                            tx.send(GuiMsg::Log("已隐身（好友看到离线）".into())).unwrap();
+                        }
                     }
                 }
                 None => {

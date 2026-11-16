@@ -15,7 +15,7 @@ base64 = "0.22"
 anyhow = "1.0"
 crossbeam-channel = "0.5"
 chrono = "0.4"
-image = { version = "0.25", features = ["jpeg", "png"] }
+image = { version = "0.25", features = ["jpeg", "png", "ico"] }
 
 [build-dependencies]
 winres = "0.1" # 用于生成管理员权限清单
