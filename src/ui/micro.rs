@@ -259,21 +259,31 @@ impl HexApp {
             };
             frame.show(ui, |ui| {
                 ui.set_width(inner_w);
-                ui.horizontal_wrapped(|ui| {
-                    ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
-                    for h in bench_data {
-                        if let Some(texture) = self.get_image(ctx, &h.image_name) {
-                            let img = egui::Image::new(&texture)
-                                .fit_to_exact_size(egui::Vec2::splat(28.0));
-                            if ui
-                                .add(egui::Button::image(img).rounding(4.0))
-                                .clicked()
-                            {
-                                let _ = self.tx_to_backend.send(BackendMsg::SwapChamp(h.id));
+                ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
+                // 5 等分槽位（space-around）：整行头像铺满容器宽度，
+                // 不足一行时按相同槽位居左排列
+                let pad = ui.spacing().button_padding;
+                let item_w = 28.0 + 2.0 * pad.x;
+                let slot = inner_w / 5.0;
+                let gap = (slot - item_w).max(0.0);
+                for chunk in bench_data.chunks(5) {
+                    ui.horizontal(|ui| {
+                        ui.add_space(gap * 0.5);
+                        ui.spacing_mut().item_spacing.x = gap;
+                        for h in chunk {
+                            if let Some(texture) = self.get_image(ctx, &h.image_name) {
+                                let img = egui::Image::new(&texture)
+                                    .fit_to_exact_size(egui::Vec2::splat(28.0));
+                                if ui
+                                    .add(egui::Button::image(img).rounding(4.0))
+                                    .clicked()
+                                {
+                                    let _ = self.tx_to_backend.send(BackendMsg::SwapChamp(h.id));
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }
             });
         }
         ui.min_rect().size()

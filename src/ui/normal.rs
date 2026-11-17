@@ -144,36 +144,47 @@ impl HexApp {
                         .color(Color32::from_rgb(200, 170, 110))
                         .strong(),
                 );
-                ui.horizontal_wrapped(|ui| {
-                    if self.bench_ids.is_empty() {
-                        ui.colored_label(Color32::GRAY, "等待队列中...");
-                    } else {
-                        // 先收集英雄数据，然后释放锁
-                        let bench_data: Vec<Hero> = {
-                            if let Ok(map) = self.heroes.lock() {
-                                self.bench_ids
-                                    .iter()
-                                    .filter_map(|id| map.get(id).cloned())
-                                    .collect()
-                            } else {
-                                Vec::new()
-                            }
-                        }; // map 在这里被释放
-                                    
-                        // 现在可以安全地调用 get_image (需要 &mut self)
-                        for h in bench_data {
-                            if let Some(texture) = self.get_image(ctx, &h.image_name) {
-                                let img = egui::Image::new(&texture)
-                                    .fit_to_exact_size(Vec2::splat(32.0));
-                                if ui.add(egui::Button::image(img)).clicked() {
-                                    let _ = self
-                                        .tx_to_backend
-                                        .send(BackendMsg::SwapChamp(h.id));
+                if self.bench_ids.is_empty() {
+                    ui.colored_label(Color32::GRAY, "等待队列中...");
+                } else {
+                    // 先收集英雄数据，然后释放锁
+                    let bench_data: Vec<Hero> = {
+                        if let Ok(map) = self.heroes.lock() {
+                            self.bench_ids
+                                .iter()
+                                .filter_map(|id| map.get(id).cloned())
+                                .collect()
+                        } else {
+                            Vec::new()
+                        }
+                    }; // map 在这里被释放
+                    // 5 等分槽位（space-around）：整行头像铺满容器宽度，
+                    // 不足一行时按相同槽位居左排列
+                    ui.spacing_mut().item_spacing = egui::vec2(4.0, 4.0);
+                    let pad = ui.spacing().button_padding;
+                    let slot = self.content_w / 5.0;
+                    // 大窗头像随槽位放大以适配宽度：槽宽扣除按钮内边距与固定槽间留白
+                    let img_size = (slot - 2.0 * pad.x - 8.0).clamp(32.0, 56.0);
+                    let item_w = img_size + 2.0 * pad.x;
+                    let gap = (slot - item_w).max(0.0);
+                    for chunk in bench_data.chunks(5) {
+                        ui.horizontal(|ui| {
+                            ui.add_space(gap * 0.5);
+                            ui.spacing_mut().item_spacing.x = gap;
+                            for h in chunk {
+                                if let Some(texture) = self.get_image(ctx, &h.image_name) {
+                                    let img = egui::Image::new(&texture)
+                                        .fit_to_exact_size(Vec2::splat(img_size));
+                                    if ui.add(egui::Button::image(img)).clicked() {
+                                        let _ = self
+                                            .tx_to_backend
+                                            .send(BackendMsg::SwapChamp(h.id));
+                                    }
                                 }
                             }
-                        }
+                        });
                     }
-                });
+                }
             });
             ui.add_space(4.0);
 

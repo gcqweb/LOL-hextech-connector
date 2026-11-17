@@ -1426,6 +1426,118 @@
     }
 
     #[test]
+    fn micro_bench_partial_row_left_slots() {
+        let mut h = Harness::new();
+        h.app.settings.micro_mode = true;
+        h.app.is_aram = true;
+        h.app.bench_ids = vec![1, 2];
+        let out = h.settle();
+        let rects = textured_rects(&out.shapes);
+        assert_eq!(rects.len(), 2);
+        let inner_min = 12.0;
+        let slot = 208.0 / 5.0;
+        let mut c: Vec<f32> = rects.iter().map(|r| r.center().x).collect();
+        c.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        for (i, x) in c.iter().enumerate() {
+            let expect = inner_min + slot * (i as f32 + 0.5);
+            assert!(
+                (x - expect).abs() < 1.0,
+                "不足整行应居左占第{i}槽: x={x} 期望={expect}"
+            );
+        }
+    }
+
+    #[test]
+    fn micro_bench_even_slots_left_aligned() {
+        let mut h = Harness::new();
+        h.app.settings.micro_mode = true;
+        h.app.is_aram = true;
+        h.app.bench_ids = vec![1, 2, 64, 103, 266, 1];
+        let out = h.settle();
+        let rects = textured_rects(&out.shapes);
+        assert_eq!(rects.len(), 6, "应渲染 6 个板凳席头像");
+        let mut rows: Vec<Vec<Rect>> = vec![];
+        for r in rects {
+            match rows.last_mut() {
+                Some(row) if (row[0].center().y - r.center().y).abs() < 5.0 => row.push(r),
+                _ => rows.push(vec![r]),
+            }
+        }
+        assert_eq!(rows.len(), 2, "6 个头像应分两行（5+1）");
+        let inner_min = 12.0;
+        let slot = 208.0 / 5.0;
+        // 整行：5 个头像中心落在 5 等分槽位中心，铺满容器宽度
+        let mut c: Vec<f32> = rows[0].iter().map(|r| r.center().x).collect();
+        c.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert_eq!(c.len(), 5);
+        for (i, x) in c.iter().enumerate() {
+            let expect = inner_min + slot * (i as f32 + 0.5);
+            assert!(
+                (x - expect).abs() < 1.0,
+                "整行第{i}个应落在槽位中心: x={x} 期望={expect}"
+            );
+        }
+        // 末行单个：居左占第 0 槽，而非整组居中
+        let last = rows[1][0].center().x;
+        let expect = inner_min + slot * 0.5;
+        assert!(
+            (last - expect).abs() < 1.0,
+            "末行单个应居左占首槽: x={last} 期望={expect}"
+        );
+    }
+
+    #[test]
+    fn normal_bench_even_slots_left_aligned() {
+        let mut h = Harness::new();
+        h.app.bench_ids = vec![1, 2, 64, 103, 266, 1, 2];
+        let out = h.settle();
+        let rects = textured_rects(&out.shapes);
+        assert_eq!(rects.len(), 7);
+        let mut rows: Vec<Vec<Rect>> = vec![];
+        for r in rects {
+            match rows.last_mut() {
+                Some(row) if (row[0].center().y - r.center().y).abs() < 5.0 => row.push(r),
+                _ => rows.push(vec![r]),
+            }
+        }
+        assert_eq!(rows.len(), 2, "7 个头像应分两行（5+2）");
+        let inner_min = 12.0;
+        let slot = h.app.content_w / 5.0;
+        // 大窗头像应随槽位放大以适配宽度（槽宽 - 按钮内边距8 - 槽间留白8）
+        let expect_img = (slot - 16.0).clamp(32.0, 56.0);
+        assert!(expect_img > 32.0, "大窗头像应大于旧 32px: {expect_img}");
+        for r in &rows[0] {
+            assert!(
+                (r.width() - expect_img).abs() < 0.6,
+                "大窗头像应随槽位放大: w={} 期望={}",
+                r.width(),
+                expect_img
+            );
+        }
+        let mut c: Vec<f32> = rows[0].iter().map(|r| r.center().x).collect();
+        c.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert_eq!(c.len(), 5);
+        for (i, x) in c.iter().enumerate() {
+            let expect = inner_min + slot * (i as f32 + 0.5);
+            assert!(
+                (x - expect).abs() < 1.0,
+                "整行第{i}个应落在槽位中心: x={x} 期望={expect}"
+            );
+        }
+        // 末行 2 个居左占第 0、1 槽
+        let mut lc: Vec<f32> = rows[1].iter().map(|r| r.center().x).collect();
+        lc.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        assert_eq!(lc.len(), 2);
+        for (i, x) in lc.iter().enumerate() {
+            let expect = inner_min + slot * (i as f32 + 0.5);
+            assert!(
+                (x - expect).abs() < 1.0,
+                "末行第{i}个应居左占槽: x={x} 期望={expect}"
+            );
+        }
+    }
+
+    #[test]
     fn micro_switches_toggle_settings() {
         let mut h = Harness::new();
         h.app.settings.micro_mode = true;
